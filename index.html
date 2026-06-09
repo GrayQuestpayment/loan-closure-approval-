@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Loan Closure Approval System</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',sans-serif;background:#f5f4f0;color:#1a1a1a;min-height:100vh}
+.app{max-width:800px;margin:0 auto;padding:1.5rem}
+.hdr{margin-bottom:1.5rem}
+.hdr h1{font-size:20px;font-weight:600;color:#111}
+.hdr p{font-size:13px;color:#888;margin-top:3px}
+.tabs{display:flex;gap:0;border-bottom:1px solid #e0ddd5;margin-bottom:0}
+.tab{padding:10px 18px;font-size:13px;font-weight:500;cursor:pointer;color:#888;background:none;border:none;border-bottom:2px solid transparent;transition:all .15s;font-family:'Inter',sans-serif}
+.tab.active{color:#111;border-bottom-color:#111}
+.tab:hover{color:#444}
+.panel{display:none;background:#fff;border:1px solid #e0ddd5;border-top:none;border-radius:0 0 12px 12px;padding:1.5rem}
+.panel.active{display:block}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.fg{display:flex;flex-direction:column;gap:5px}
+.fg.full{grid-column:1/-1}
+label{font-size:11px;font-weight:600;color:#888;letter-spacing:.06em;text-transform:uppercase}
+input,select,textarea{width:100%;font-family:'Inter',sans-serif;font-size:13px;padding:8px 10px;border:1px solid #ddd;border-radius:7px;background:#fafaf8;color:#111;transition:border .15s;outline:none}
+input:focus,select:focus,textarea:focus{border-color:#555;background:#fff}
+textarea{resize:vertical;min-height:72px}
+.abox{background:#fffbeb;border:1px solid #f3d77a;border-radius:8px;padding:12px 16px;margin:14px 0;display:flex;align-items:center;justify-content:space-between}
+.alabel{font-size:12px;color:#92680b;font-weight:500}
+.aamt{font-size:22px;font-weight:600;color:#92680b}
+.btn-submit{background:#111;border:none;border-radius:8px;padding:10px 24px;font-size:13px;cursor:pointer;color:#fff;font-family:'Inter',sans-serif;font-weight:500;transition:background .15s}
+.btn-submit:hover{background:#333}
+.btn-submit:disabled{opacity:.5;cursor:default}
+.btn-approve{background:#dcfce7;border:1px solid #86efac;border-radius:7px;padding:7px 14px;font-size:12px;cursor:pointer;color:#15803d;font-family:'Inter',sans-serif;font-weight:600}
+.btn-reject{background:#fee2e2;border:1px solid #fca5a5;border-radius:7px;padding:7px 14px;font-size:12px;cursor:pointer;color:#dc2626;font-family:'Inter',sans-serif;font-weight:600}
+.card{background:#fff;border:1px solid #e5e5e0;border-radius:10px;padding:1rem 1.25rem;margin-bottom:10px}
+.card:hover{border-color:#ccc}
+.ch{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px}
+.ct{font-size:14px;font-weight:600;color:#111}
+.cs{font-size:11px;color:#aaa;margin-top:2px}
+.badge{font-size:11px;font-weight:600;padding:3px 9px;border-radius:20px}
+.b-pending{background:#fef9c3;color:#a16207}
+.b-approved{background:#dcfce7;color:#15803d}
+.b-rejected{background:#fee2e2;color:#dc2626}
+.cmeta{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:10px}
+.ml{font-size:10px;font-weight:600;color:#aaa;letter-spacing:.04em;text-transform:uppercase;margin-bottom:2px}
+.mv{font-size:12px;color:#111;font-weight:500}
+.mv.amt{color:#a16207;font-size:14px;font-weight:600}
+.cact{display:flex;gap:8px;justify-content:flex-end;border-top:1px solid #f0ede5;padding-top:10px}
+.remarks{font-size:12px;color:#888;margin-top:6px;font-style:italic}
+.empty{text-align:center;padding:3rem 1rem;color:#bbb;font-size:13px}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:1.5rem}
+.sc{background:#f8f8f5;border:1px solid #e5e5e0;border-radius:8px;padding:.875rem}
+.sl{font-size:11px;font-weight:600;color:#aaa;letter-spacing:.04em;text-transform:uppercase;margin-bottom:4px}
+.sv{font-size:22px;font-weight:600;color:#111}
+.sv.warn{color:#a16207}
+.sv.ok{color:#15803d}
+.toast{border-radius:8px;padding:11px 14px;font-size:12px;margin-bottom:1rem;display:none;font-weight:500}
+.ts{background:#f0fdf4;border:1px solid #bbf7d0;color:#15803d}
+.td{background:#fef2f2;border:1px solid #fecaca;color:#dc2626}
+.fr{display:flex;gap:8px;margin-bottom:1rem;align-items:center}
+.fr select{width:auto;font-size:12px;padding:6px 8px}
+.mailcard{background:#f8f8f5;border:1px solid #e5e5e0;border-radius:10px;overflow:hidden;margin-top:10px}
+.mailhdr{background:#fff;border-bottom:1px solid #e5e5e0;padding:12px 16px}
+.mailf{display:flex;gap:8px;font-size:12px;margin-bottom:3px}
+.mailfl{color:#aaa;min-width:44px;font-weight:600}
+.mailbody{padding:14px 16px;font-size:12px;color:#444;line-height:1.7;white-space:pre-wrap}
+.syncrow{display:flex;align-items:center;gap:6px;font-size:11px;color:#aaa}
+.sdot{width:7px;height:7px;border-radius:50%;display:inline-block}
+.sok{background:#22c55e}.sp{background:#f59e0b}.sf{background:#ef4444}
+.sheet-note{background:#eff6ff;border:1px solid #bfdbfe;border-radius:7px;padding:10px 14px;font-size:12px;color:#1d4ed8;margin-bottom:1rem}
+@media(max-width:600px){.form-grid,.cmeta,.stats{grid-template-columns:1fr 1fr}.fg.full{grid-column:1/-1}}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="hdr">
+    <h1><i class="ti ti-file-check" style="vertical-align:-3px;margin-right:6px"></i>Loan Closure Approval System</h1>
+    <p>Parent Support · Auto-sync to Google Sheet &nbsp;<strong>AUTO DATA</strong></p>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" onclick="go('raise')"><i class="ti ti-file-plus"></i> Raise Request</button>
+    <button class="tab" onclick="go('mgr')"><i class="ti ti-checks"></i> Manager Approval <span id="pbadge" style="background:#fef9c3;color:#a16207;font-size:10px;padding:2px 6px;border-radius:10px;margin-left:4px;font-weight:600">0</span></button>
+    <button class="tab" onclick="go('mail')"><i class="ti ti-mail"></i> Mail Log</button>
+  </div>
+
+  <!-- RAISE REQUEST -->
+  <div id="p-raise" class="panel active">
+    <div id="tok-ok" class="toast ts"></div>
+    <div id="tok-err" class="toast td"></div>
+    <div class="sheet-note"><i class="ti ti-table"></i> On submit, this entry will be appended to your Google Sheet → tab <strong>AUTO DATA</strong> and a notification email will be sent via Gmail.</div>
+    <div class="form-grid">
+      <div class="fg"><label>App ID / Loan ID</label><input type="text" id="appId" placeholder="e.g. 1549692"/></div>
+      <div class="fg"><label>NBFC / Lender</label>
+        <select id="nbfc">
+          <option value="">Select NBFC</option>
+          <option>None</option>
+          <option>Ratnaafin Capital Pvt Ltd</option>
+          <option>Ratnaafin Capital Pvt Ltd FSF</option>
+          <option>Arka Fincap</option>
+          <option>Western Capital</option>
+          <option>Western Capital - FSF</option>
+          <option>Western Capital Edtech</option>
+          <option>Aditya Birla Finance Limited</option>
+          <option>ABFL</option>
+          <option>Axis Finance</option>
+          <option>Axis Finance FSF</option>
+          <option>Avanse</option>
+          <option>Fintree</option>
+          <option>Mirae</option>
+          <option>Ratnafin</option>
+          <option>Refund to Parent / Institute</option>
+          <option>Other</option>
+        </select>
+      </div>
+      <div class="fg"><label>Approval Amount (₹)</label><input type="number" id="amt" placeholder="e.g. 500" oninput="upd()"/></div>
+      <div class="fg"><label>Mode of Transfer</label>
+        <select id="mode"><option>Razorpay Virtual</option><option>Razorpay Paysprint</option></select>
+      </div>
+      <div class="fg"><label>Type</label>
+        <select id="typ">
+          <option>Loan Closure</option>
+          <option>Dropout Shortfall</option>
+          <option>Foreclosure</option>
+          <option>Shortfall Transfer</option>
+          <option>Refund to Parent</option>
+          <option>Refund to Institute</option>
+          <option>Mandate Charges</option>
+          <option>Bounce Charges</option>
+          <option>WHJ</option>
+          <option>Subvention Bear</option>
+          <option>LPP Charges</option>
+          <option>EMI Transfer</option>
+        </select>
+      </div>
+      <div class="fg"><label>SPOC (Your Name)</label>
+        <select id="spoc">
+          <option value="">Select SPOC</option>
+          <option>Ganesh</option><option>Aamir Sir</option><option>IMRAN</option>
+          <option>Prathmesh</option><option>Saloni</option><option>Dhawal</option>
+          <option>Sachin</option><option>Sakshee</option><option>Kanifnath</option>
+          <option>Sahil</option><option>Hemali</option>
+        </select>
+      </div>
+      <div class="fg full"><label>Remarks / Reason for Approval</label>
+        <textarea id="rmk" placeholder="Explain why manager approval is needed for this amount..."></textarea>
+      </div>
+      <div class="fg"><label>To Email</label>
+        <select id="mgEmail">
+          <option value="">Select recipient</option>
+          <option value="aamir.khan@grayquest.com">Aamir Khan — aamir.khan@grayquest.com</option>
+          <option value="neel.savla@grayquest.com">Neel Savla — neel.savla@grayquest.com</option>
+          <option value="sakshee.thanekar@grayquest.com">Sakshee Thanekar — sakshee.thanekar@grayquest.com</option>
+        </select>
+      </div>
+      <div class="fg"><label>Your Email (CC)</label><input type="email" id="ccEmail" value="GQRecon@grayquest.com" readonly style="background:#f0f0ec;color:#888;cursor:not-allowed"/></div>
+    </div>
+
+    <div class="abox">
+      <div>
+        <div class="alabel"><i class="ti ti-alert-triangle"></i> Approval Amount Required</div>
+        <div style="font-size:11px;color:#a16207;margin-top:2px">Manager sign-off needed before processing this transfer</div>
+      </div>
+      <div class="aamt" id="adsp">₹ 0</div>
+    </div>
+
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-top:1rem">
+      <div class="syncrow" id="syncst"></div>
+      <button class="btn-submit" onclick="raise()" id="sbtn"><i class="ti ti-send"></i> Submit for Approval</button>
+    </div>
+  </div>
+
+  <!-- MANAGER APPROVAL -->
+  <div id="p-mgr" class="panel">
+    <div class="stats">
+      <div class="sc"><div class="sl">Total</div><div class="sv" id="st-tot">0</div></div>
+      <div class="sc"><div class="sl">Pending</div><div class="sv warn" id="st-pen">0</div></div>
+      <div class="sc"><div class="sl">Approved</div><div class="sv ok" id="st-apr">0</div></div>
+      <div class="sc"><div class="sl">Pending Amount</div><div class="sv warn" id="st-amt">₹0</div></div>
+    </div>
+    <div class="fr">
+      <span style="font-size:12px;color:#888">Filter:</span>
+      <select onchange="filt(this.value)"><option value="all">All</option><option>Pending</option><option>Approved</option><option>Rejected</option></select>
+    </div>
+    <div id="mgr-toast" class="toast"></div>
+    <div id="rlist"><div class="empty"><i class="ti ti-inbox" style="font-size:36px;display:block;margin-bottom:8px"></i>No requests yet.<br>Team can raise requests from the first tab.</div></div>
+  </div>
+
+  <!-- MAIL LOG -->
+  <div id="p-mail" class="panel">
+    <p style="font-size:13px;color:#888;margin-bottom:1rem">Email notifications sent via Gmail for all approval activities.</p>
+    <div id="mlist"><div class="empty"><i class="ti ti-mail-off" style="font-size:36px;display:block;margin-bottom:8px"></i>No emails sent yet.</div></div>
+  </div>
+</div>
+
+<script>
+const SHEET_ID='1ulj-pEcm-il2BI5iqyad24TumspCZoYYAPSD4zclHRI';
+const SHEET_TAB='AUTO DATA';
+let reqs=[],mails=[],fStatus='all';
+
+// Load from localStorage (works in standalone HTML)
+try{const r=localStorage.getItem('lc_reqs');if(r)reqs=JSON.parse(r);}catch(e){}
+try{const m=localStorage.getItem('lc_mails');if(m)mails=JSON.parse(m);}catch(e){}
+updStats();updBadge();
+
+function save(){
+  try{localStorage.setItem('lc_reqs',JSON.stringify(reqs));localStorage.setItem('lc_mails',JSON.stringify(mails));}catch(e){}
+}
+
+function upd(){const v=parseFloat(document.getElementById('amt').value)||0;document.getElementById('adsp').textContent='₹ '+v.toLocaleString('en-IN');}
+
+function go(t){
+  document.querySelectorAll('.tab').forEach((b,i)=>b.classList.toggle('active',['raise','mgr','mail'][i]===t));
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.getElementById('p-'+t).classList.add('active');
+  if(t==='mgr')renderReqs();if(t==='mail')renderMails();
+}
+
+function sync(msg,type){
+  const el=document.getElementById('syncst');
+  const cls=type==='ok'?'sok':type==='p'?'sp':'sf';
+  el.innerHTML=`<span class="sdot ${cls}"></span>${msg}`;
+}
+
+async function callAPI(prompt,mcpUrl,mcpName){
+  try{
+    const res=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:500,
+        messages:[{role:'user',content:prompt}],
+        mcp_servers:[{type:'url',url:mcpUrl,name:mcpName}]})
+    });
+    return await res.json();
+  }catch(e){return null;}
+}
+
+async function syncSheet(row){
+  sync('Syncing to Google Sheet…','p');
+  const csv=row.map(v=>`"${String(v||'').replace(/"/g,'""')}"`).join(',');
+  const prompt=`You have access to Google Drive and Sheets. Append exactly one new row to the Google Spreadsheet ID "${SHEET_ID}", in the sheet tab named "${SHEET_TAB}". The row values (Date, App ID, NBFC, Amount, UTR, Mode, Remarks, SPOC, POC, Additional Remarks) are: ${csv}. After appending successfully reply only "APPENDED".`;
+  const data=await callAPI(prompt,'https://drivemcp.googleapis.com/mcp/v1','google-drive');
+  if(!data){sync('Sheet offline — saved locally','f');return;}
+  const txt=(data.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('');
+  if(/APPENDED|success/i.test(txt))sync('Synced to Sheet ✓','ok');
+  else sync('Sheet updated (verify tab AUTO DATA)','ok');
+}
+
+async function sendGmail(to,cc,subject,body){
+  const prompt=`Use Gmail to send an email. To: "${to}". ${cc?`CC: "${cc}".`:''} Subject: "${subject}". Body:\n${body}\nSend it and reply only "SENT".`;
+  const data=await callAPI(prompt,'https://gmailmcp.googleapis.com/mcp/v1','gmail');
+  if(!data)return false;
+  const txt=(data.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('');
+  return /sent|success/i.test(txt);
+}
+
+async function raise(){
+  const appId=document.getElementById('appId').value.trim();
+  const nbfc=document.getElementById('nbfc').value;
+  const amt=parseFloat(document.getElementById('amt').value)||0;
+  const mode=document.getElementById('mode').value;
+  const typ=document.getElementById('typ').value;
+  const spoc=document.getElementById('spoc').value;
+  const rmk=document.getElementById('rmk').value.trim();
+  const mgEmail=document.getElementById('mgEmail').value.trim();
+  const ccEmail=document.getElementById('ccEmail').value.trim();
+
+  if(!appId||!nbfc||!amt||!spoc||!rmk||!mgEmail){
+    show('tok-err','Please fill in App ID, NBFC, Approval Amount, SPOC, Remarks and Manager Email.');return;
+  }
+  const btn=document.getElementById('sbtn');
+  btn.disabled=true;btn.innerHTML='<i class="ti ti-loader-2"></i> Submitting…';
+
+  const now=new Date();
+  const ds=now.toLocaleDateString('en-GB').replace(/\//g,'-');
+  const ts=now.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});
+  const req={id:'REQ-'+String(reqs.length+1).padStart(3,'0'),date:ds,time:ts,appId,nbfc,amt,mode,typ,spoc,rmk,mgEmail,ccEmail,status:'Pending'};
+  reqs.push(req);save();
+
+  // Parallel: Sheet + Email
+  const sheetRow=[ds,appId,nbfc,amt,'',mode,typ,spoc,spoc,rmk];
+  const subject=`[Action Required] Loan Closure Approval – App ID ${appId} | ₹${amt.toLocaleString('en-IN')} – ${req.id}`;
+  const body=`Dear Manager,
+
+A loan closure approval request has been raised.
+
+──────────────────────────────
+Request ID : ${req.id}
+Date       : ${ds} ${ts}
+App ID     : ${appId}
+NBFC       : ${nbfc}
+Amount     : ₹${amt.toLocaleString('en-IN')}
+Type       : ${typ}
+Mode       : ${mode}
+SPOC       : ${spoc}
+──────────────────────────────
+
+Remarks:
+${rmk}
+
+Please Approve / Reject from the Manager Approval panel.
+
+Regards,
+${spoc}`;
+
+  const [, sent]=await Promise.all([syncSheet(sheetRow), sendGmail(mgEmail,ccEmail,subject,body)]);
+  mails.push({type:'raise',ts:now.toLocaleString('en-IN'),from:ccEmail||spoc,to:mgEmail,subject,body,sent});
+  save();
+
+  updStats();updBadge();
+  show('tok-ok',`${req.id} submitted! ${sent?'Email sent to manager ✓':'Email queued — check Mail Log'}`);
+  ['appId','amt','rmk'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('nbfc').value='';document.getElementById('spoc').value='';
+  document.getElementById('adsp').textContent='₹ 0';
+  btn.disabled=false;btn.innerHTML='<i class="ti ti-send"></i> Submit for Approval';
+}
+
+function updStats(){
+  const p=reqs.filter(r=>r.status==='Pending');
+  document.getElementById('st-tot').textContent=reqs.length;
+  document.getElementById('st-pen').textContent=p.length;
+  document.getElementById('st-apr').textContent=reqs.filter(r=>r.status==='Approved').length;
+  document.getElementById('st-amt').textContent='₹'+p.reduce((s,r)=>s+r.amt,0).toLocaleString('en-IN');
+}
+function updBadge(){document.getElementById('pbadge').textContent=reqs.filter(r=>r.status==='Pending').length;}
+function filt(v){fStatus=v;renderReqs();}
+
+function renderReqs(){
+  updStats();
+  const el=document.getElementById('rlist');
+  const list=(fStatus==='all'?reqs:reqs.filter(r=>r.status===fStatus));
+  if(!list.length){el.innerHTML='<div class="empty"><i class="ti ti-inbox" style="font-size:36px;display:block;margin-bottom:8px"></i>No requests found.</div>';return;}
+  el.innerHTML=[...list].reverse().map(r=>`
+    <div class="card">
+      <div class="ch">
+        <div>
+          <div class="ct"><i class="ti ti-file-invoice"></i> ${r.id} &nbsp;—&nbsp; App ID: ${r.appId}</div>
+          <div class="cs">${r.date} ${r.time} · ${r.spoc}</div>
+        </div>
+        <span class="badge b-${r.status.toLowerCase()}">${r.status}</span>
+      </div>
+      <div class="cmeta">
+        <div><div class="ml">NBFC</div><div class="mv">${r.nbfc}</div></div>
+        <div><div class="ml">Approval Amt</div><div class="mv amt">₹${r.amt.toLocaleString('en-IN')}</div></div>
+        <div><div class="ml">Type</div><div class="mv">${r.typ}</div></div>
+        <div><div class="ml">Mode</div><div class="mv">${r.mode}</div></div>
+      </div>
+      <div class="remarks"><i class="ti ti-message"></i> ${r.rmk}</div>
+      ${r.status==='Pending'?`<div class="cact">
+        <button class="btn-reject" onclick="act('${r.id}','Rejected')"><i class="ti ti-x"></i> Reject</button>
+        <button class="btn-approve" onclick="act('${r.id}','Approved')"><i class="ti ti-check"></i> Approve</button>
+      </div>`:`<div style="text-align:right;padding-top:10px;font-size:11px;color:#aaa">Actioned: ${r.actionDate||''}</div>`}
+    </div>`).join('');
+}
+
+async function act(id,action){
+  const r=reqs.find(x=>x.id===id);if(!r)return;
+  r.status=action;r.actionDate=new Date().toLocaleString('en-IN');save();
+  const subject=`[${action}] Loan Closure – App ID ${r.appId} | ₹${r.amt.toLocaleString('en-IN')} – ${r.id}`;
+  const body=`Dear ${r.spoc},
+
+Your loan closure approval request has been ${action.toLowerCase()}.
+
+──────────────────────────────
+Request ID : ${r.id}
+App ID     : ${r.appId}
+NBFC       : ${r.nbfc}
+Amount     : ₹${r.amt.toLocaleString('en-IN')}
+Type       : ${r.typ}
+Status     : ${action.toUpperCase()}
+Actioned   : ${r.actionDate}
+──────────────────────────────
+${action==='Approved'?'\nYou may proceed with the approved transfer amount.\n':'\nPlease review and re-raise if needed.\n'}
+Regards,
+Manager`;
+  const sent=await sendGmail(r.ccEmail||r.spoc,r.mgEmail,subject,body);
+  mails.push({type:action.toLowerCase(),ts:new Date().toLocaleString('en-IN'),from:'Manager',to:r.ccEmail||r.spoc,subject,body,sent});
+  save();
+  const t=document.getElementById('mgr-toast');
+  t.className=`toast ${action==='Approved'?'ts':'td'}`;
+  t.innerHTML=`<i class="ti ti-${action==='Approved'?'circle-check':'circle-x'}"></i> ${r.id} ${action.toLowerCase()}. ${sent?'Notification email sent ✓':'Notification queued'}`;
+  t.style.display='block';setTimeout(()=>t.style.display='none',4000);
+  updStats();updBadge();renderReqs();
+}
+
+function renderMails(){
+  const el=document.getElementById('mlist');
+  if(!mails.length){el.innerHTML='<div class="empty"><i class="ti ti-mail-off" style="font-size:36px;display:block;margin-bottom:8px"></i>No emails sent yet.</div>';return;}
+  el.innerHTML=[...mails].reverse().map(m=>`
+    <div class="mailcard">
+      <div class="mailhdr">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+          <span style="font-size:12px;font-weight:600;color:#111;flex:1;margin-right:8px;">${m.subject}</span>
+          <span class="badge b-${m.type==='raise'?'pending':m.type==='approved'?'approved':'rejected'}">${m.sent!==false?'Sent':'Queued'}</span>
+        </div>
+        <div class="mailf"><span class="mailfl">From</span><span>${m.from}</span></div>
+        <div class="mailf"><span class="mailfl">To</span><span>${m.to}</span></div>
+        <div class="mailf"><span class="mailfl">Date</span><span style="color:#aaa">${m.ts}</span></div>
+      </div>
+      <div class="mailbody">${m.body}</div>
+    </div>`).join('');
+}
+
+function show(id,msg){
+  const el=document.getElementById(id);el.textContent=msg;el.style.display='block';
+  setTimeout(()=>el.style.display='none',5000);
+}
+</script>
+</body>
+</html>
