@@ -551,6 +551,10 @@ async function loginSendOTP(){
 
   const btn=document.getElementById('ls1-btn');
   btn.disabled=true;btn.innerHTML='<i class=\"ti ti-loader-2\"></i> Sending OTP\u2026';
+  const ok1=document.getElementById('ls1-ok');
+  ok1.className='toast ts';
+  ok1.innerHTML='<i class=\"ti ti-send\"></i> Sending OTP to <strong>'+email+'</strong>… please wait.';
+  ok1.style.display='block';
 
   loginOTP=String(Math.floor(100000+Math.random()*900000));
   loginOTPEmail=email;
@@ -572,6 +576,19 @@ async function loginSendOTP(){
     sent=/sent|success/i.test(txt);
   }catch(e){}
 
+  if(!sent){
+    // Email failed — block login, show error, never reveal OTP on screen
+    loginOTP='';
+    clearInterval(loginTimer);
+    const ok=document.getElementById('ls1-ok');
+    ok.className='toast td';
+    ok.innerHTML='<i class=\"ti ti-mail-off\"></i> Could not deliver OTP to <strong>'+email+'</strong>. Please ensure Gmail is connected and try again.';
+    ok.style.display='block';
+    btn.disabled=false;btn.innerHTML='<i class=\"ti ti-mail-forward\"></i> &nbsp;Send OTP to Email';
+    return;
+  }
+
+  // Email sent — proceed to OTP entry screen
   document.getElementById('ls2-email').textContent=email;
   clearOTPBoxes();
   document.getElementById('ls2-err').style.display='none';
@@ -579,13 +596,6 @@ async function loginSendOTP(){
   document.getElementById('login-step1').style.display='none';
   document.getElementById('login-step2').style.display='block';
   setTimeout(()=>document.querySelectorAll('.otp-box')[0].focus(),100);
-
-  if(!sent){
-    const el=document.getElementById('ls2-err');
-    el.className='toast ts';
-    el.innerHTML=`<i class=\"ti ti-info-circle\"></i> Email unavailable. Your OTP: <strong style=\"letter-spacing:4px\">${loginOTP}</strong>`;
-    el.style.display='block';
-  }
   btn.disabled=false;btn.innerHTML='<i class=\"ti ti-mail-forward\"></i> &nbsp;Send OTP to Email';
 }
 
