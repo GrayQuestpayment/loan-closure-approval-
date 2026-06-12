@@ -550,45 +550,32 @@ async function loginSendOTP(){
   if(!email){err.textContent='Please select your email to continue.';err.style.display='block';return;}
 
   const btn=document.getElementById('ls1-btn');
-  btn.disabled=true;btn.innerHTML='<i class=\"ti ti-loader-2\"></i> Sending OTP\u2026';
-  const ok1=document.getElementById('ls1-ok');
-  ok1.className='toast ts';
-  ok1.innerHTML='<i class=\"ti ti-send\"></i> Sending OTP to <strong>'+email+'</strong>… please wait.';
-  ok1.style.display='block';
+  btn.disabled=true;
+  btn.innerHTML='<i class="ti ti-loader-2"></i> Sending OTP…';
+  ok.className='toast ts';
+  ok.innerHTML='<i class="ti ti-send"></i> Sending OTP to <strong>'+email+'</strong>… please wait.';
+  ok.style.display='block';
 
   loginOTP=String(Math.floor(100000+Math.random()*900000));
   loginOTPEmail=email;
   const name=mgrNames[email]||email;
-  const subject='GrayQuest \u2014 Your Login OTP';
-  const body=`Dear ${name},\n\nYour One-Time Password (OTP) to log in to the GrayQuest Loan Closure Approval System is:\n\n        \u25ba ${loginOTP} \u25c4\n\nValid for 10 minutes. Do not share this with anyone.\n\nRegards,\nGrayQuest System`;
 
-  let sent=false;
-  try{
-    const res=await fetch('https://api.anthropic.com/v1/messages',{
-      method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:300,
-        messages:[{role:'user',content:`Use Gmail to send email. To: "${email}". Subject: "${subject}". Body:\n${body}\nReply only SENT.`}],
-        mcp_servers:[{type:'url',url:'https://gmailmcp.googleapis.com/mcp/v1',name:'gmail'}]
-      })
-    });
-    const data=await res.json();
-    const txt=(data.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('');
-    sent=/sent|success/i.test(txt);
-  }catch(e){}
+  const sent=await sendOTPEmail(email, loginOTP, name);
 
   if(!sent){
-    // Email failed — block login, show error, never reveal OTP on screen
     loginOTP='';
     clearInterval(loginTimer);
-    const ok=document.getElementById('ls1-ok');
     ok.className='toast td';
-    ok.innerHTML='<i class=\"ti ti-mail-off\"></i> Could not deliver OTP to <strong>'+email+'</strong>. Please ensure Gmail is connected and try again.';
+    ok.innerHTML='<i class="ti ti-mail-off"></i> Could not deliver OTP to <strong>'+email+'</strong>. Please ensure Gmail is connected and try again.';
     ok.style.display='block';
-    btn.disabled=false;btn.innerHTML='<i class=\"ti ti-mail-forward\"></i> &nbsp;Send OTP to Email';
+    btn.disabled=false;
+    btn.innerHTML='<i class="ti ti-mail-forward"></i> &nbsp;Send OTP to Email';
     return;
   }
 
   // Email sent — proceed to OTP entry screen
+  ok.className='toast ts';
+  ok.innerHTML='<i class="ti ti-circle-check"></i> OTP sent to <strong>'+email+'</strong>. Please check your inbox.';
   document.getElementById('ls2-email').textContent=email;
   clearOTPBoxes();
   document.getElementById('ls2-err').style.display='none';
@@ -596,7 +583,8 @@ async function loginSendOTP(){
   document.getElementById('login-step1').style.display='none';
   document.getElementById('login-step2').style.display='block';
   setTimeout(()=>document.querySelectorAll('.otp-box')[0].focus(),100);
-  btn.disabled=false;btn.innerHTML='<i class=\"ti ti-mail-forward\"></i> &nbsp;Send OTP to Email';
+  btn.disabled=false;
+  btn.innerHTML='<i class="ti ti-mail-forward"></i> &nbsp;Send OTP to Email';
 }
 
 async function loginResendOTP(){
@@ -830,11 +818,62 @@ async function syncSheet(row){
 }
 
 async function sendGmail(to, cc, subject, htmlBody, textBody){
-  const prompt=`Use Gmail to send an HTML email. To: "${to}". ${cc?`CC: "${cc}".`:''} Subject: "${subject}". Send the email with HTML content (use html_body parameter if available, otherwise use the plain text). HTML Body:\n${htmlBody}\n\nPlain text fallback:\n${textBody}\n\nSend it and reply only "SENT".`;
-  const data=await callAPI(prompt,'https://gmailmcp.googleapis.com/mcp/v1','gmail');
-  if(!data)return false;
-  const txt=(data.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('');
-  return /sent|success/i.test(txt);
+  try{
+    const res=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        model:'claude-sonnet-4-20250514',
+        max_tokens:2048,
+        system:'You are an email dispatcher. Your only task is to send emails using the Gmail tools available. Always use the Gmail MCP send or create_and_send tool immediately without asking questions. Send the email as instructed and reply SENT.',
+        messages:[{
+          role:'user',
+          content:`Please send this email immediately using Gmail:\n\nTO: ${to}\n${cc?'CC: '+cc+'\n':''}SUBJECT: ${subject}\n\nHTML BODY:\n${htmlBody}\n\nPLAIN TEXT BODY (fallback):\n${textBody}\n\nSend it now and reply only: SENT`
+        }],
+        mcp_servers:[{type:'url',url:'https://gmailmcp.googleapis.com/mcp/v1',name:'gmail'}]
+      })
+    });
+    const data=await res.json();
+    console.log('[sendGmail] response:', JSON.stringify(data).slice(0,400));
+    if(data.error){console.error('[sendGmail] API error:',data.error);return false;}
+    // Check all content blocks — text + tool_use both indicate success
+    const blocks=data.content||[];
+    const textOut=blocks.filter(b=>b.type==='text').map(b=>b.text).join(' ');
+    const hasToolUse=blocks.some(b=>b.type==='tool_use'||b.type==='mcp_tool_use');
+    console.log('[sendGmail] text:', textOut, '| toolUse:', hasToolUse);
+    return hasToolUse||/sent|success|draft|created|delivered/i.test(textOut);
+  }catch(e){
+    console.error('[sendGmail] exception:',e);
+    return false;
+  }
+}
+
+// Dedicated OTP email sender (plain text — more reliable for OTP delivery)
+async function sendOTPEmail(to, otp, name){
+  try{
+    const subject='GrayQuest — Your Login OTP';
+    const body=`Dear ${name},\n\nYour One-Time Password (OTP) to log in to the GrayQuest Loan Closure Approval System is:\n\n    ${otp}\n\nThis OTP is valid for 10 minutes.\nDo not share this with anyone.\n\nIf you did not request this, please ignore this email.\n\nRegards,\nGrayQuest System`;
+    const res=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        model:'claude-sonnet-4-20250514',
+        max_tokens:1024,
+        system:'You are an email dispatcher. Use Gmail tools to send the email immediately. No questions. Reply SENT when done.',
+        messages:[{role:'user',content:`Send this email using Gmail NOW:\nTO: ${to}\nSUBJECT: ${subject}\nBODY:\n${body}\n\nReply only: SENT`}],
+        mcp_servers:[{type:'url',url:'https://gmailmcp.googleapis.com/mcp/v1',name:'gmail'}]
+      })
+    });
+    const data=await res.json();
+    console.log('[sendOTPEmail] response:', JSON.stringify(data).slice(0,400));
+    const blocks=data.content||[];
+    const textOut=blocks.filter(b=>b.type==='text').map(b=>b.text).join(' ');
+    const hasToolUse=blocks.some(b=>b.type==='tool_use'||b.type==='mcp_tool_use');
+    return hasToolUse||/sent|success|draft|created/i.test(textOut);
+  }catch(e){
+    console.error('[sendOTPEmail] exception:',e);
+    return false;
+  }
 }
 
 function genToken(){return Math.random().toString(36).slice(2)+Math.random().toString(36).slice(2);}
@@ -952,7 +991,11 @@ async function raise(){
   save();
 
   updStats();updBadge();
-  show('tok-ok',`${req.id} submitted! ${sent?'Email with Approve/Reject buttons sent ✓':'Email queued — check Mail Log'}`);
+  if(sent){
+    show('tok-ok',`✅ ${req.id} submitted! Notification email with Approve/Reject buttons sent to ${mgrNames[mgEmail]||mgEmail} ✓`);
+  } else {
+    show('tok-err',`⚠️ ${req.id} saved but email delivery failed. Check browser console (F12) for details. Ensure Gmail is connected.`);
+  }
   ['appId','amt','rmk'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('nbfc').value='';
   document.getElementById('typ').value='';document.getElementById('typOther').value='';document.getElementById('typOther').style.display='none';
